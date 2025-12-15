@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual env
+venv/
+.env/
+.env*/
+
+# VS Code settings
+.vscode/
+
+# SQLite local DB
+*.db
+
+# Pytest cache
+.pytest_cache/
+
+# Docker stuff that shouldn't be tracked (if any build artifacts created)
+*.log

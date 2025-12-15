@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <form method="GET" class="d-flex">
+                            <label class="form-label me-2 mt-2">Group:</label>
+                            <input type="text" class="form-control me-2" name="group" placeholder="Enter group name" value="{{ current_group }}" style="width: 150px;">
+                            <button type="submit" class="btn btn-primary">Switch</button>
+                        </form>
+                    </div>
+                    <div class="col-md-8">
+                        <form method="GET" class="d-flex justify-content-end">
+                            <input type="hidden" name="group" value="{{ current_group }}">
+                            <input type="text" class="form-control me-2" name="q" placeholder="Search tasks..." value="{{ search_term or '' }}" style="width: 200px;">
+                            <button type="submit" class="btn btn-outline-primary">Search</button>
+                            {% if search_term %}
+                            <a href="/?group={{ current_group }}" class="btn btn-outline-secondary ms-2">Clear</a>
+                            {% endif %}
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-8">
+        <h2>Tasks - Group: <span class="badge bg-info">{{ current_group }}</span></h2>
+        {% if tasks %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Priority</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in tasks %}
+                <tr class="{% if task.status == 'done' %}table-success{% endif %}">
+                    <td>
+                        <strong>{{ task.title }}</strong>
+                        {% if task.description %}<br><small class="text-muted">{{ task.description }}</small>{% endif %}
+                    </td>
+                    <td><span class="badge bg-secondary">{{ task.category }}</span></td>
+                    <td>
+                        <span class="badge {% if task.priority == 'high' %}bg-danger{% elif task.priority == 'medium' %}bg-warning{% else %}bg-info{% endif %}">
+                            {{ task.priority }}
+                        </span>
+                    </td>
+                    <td>{{ task.due_date or '-' }}</td>
+                    <td>
+                        <span class="badge {% if task.status == 'done' %}bg-success{% else %}bg-warning{% endif %}">
+                            {{ task.status }}
+                        </span>
+                        {% if task.completed_at %}<br><small class="text-muted">{{ task.completed_at.strftime('%Y-%m-%d %H:%M') }}</small>{% endif %}
+                    </td>
+                    <td>
+                        {% if task.status != 'done' %}
+                        <form method="POST" action="/complete/{{ task.id }}" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-success">Complete</button>
+                        </form>
+                        {% endif %}
+                        <form method="POST" action="/delete/{{ task.id }}" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this task?')">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted">No tasks yet. Add one below!</p>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-4">
+        <h3>Add New Task</h3>
+        <form method="POST" action="/add">
+            <input type="hidden" name="group" value="{{ current_group }}">
+            <div class="mb-3">
+                <label for="title" class="form-label">Title *</label>
+                <input type="text" class="form-control" id="title" name="title" required>
+            </div>
+            <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <textarea class="form-control" id="description" name="description" rows="2"></textarea>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="priority" class="form-label">Priority</label>
+                        <select class="form-control" id="priority" name="priority">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="category" class="form-label">Category</label>
+                        <select class="form-control" id="category" name="category">
+                            <option value="general" selected>General</option>
+                            <option value="work">Work</option>
+                            <option value="study">Study</option>
+                            <option value="home">Home</option>
+                            <option value="personal">Personal</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="due_date" class="form-label">Due Date</label>
+                <input type="date" class="form-control" id="due_date" name="due_date">
+            </div>
+            <button type="submit" class="btn btn-primary">Add Task</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
