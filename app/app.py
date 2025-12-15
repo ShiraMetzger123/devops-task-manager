@@ -1,7 +1,9 @@
 import os
+import time
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+import sqlalchemy.exc
 
 app = Flask(__name__)
 
@@ -20,6 +22,24 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
 
 db = SQLAlchemy(app)
+
+def wait_for_db(max_attempts=20):
+    """Wait for database to be ready with retry logic"""
+    for attempt in range(max_attempts):
+        try:
+            # Try to connect to the database
+            with db.engine.connect() as conn:
+                conn.execute(db.text('SELECT 1'))
+            print("Database connection successful!")
+            return
+        except sqlalchemy.exc.OperationalError as e:
+            print(f"Database not ready (attempt {attempt + 1}/{max_attempts}): {e}")
+            if attempt < max_attempts - 1:
+                print("Retrying in 3 seconds...")
+                time.sleep(3)
+            else:
+                print("Failed to connect to database after all attempts")
+                raise
 
 # Task model
 class Task(db.Model):
@@ -168,5 +188,6 @@ def api_tasks():
 
 if __name__ == '__main__':
     with app.app_context():
+        wait_for_db()
         db.create_all()
     app.run(debug=True, host='0.0.0.0', port=5000)
