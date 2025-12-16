@@ -4,6 +4,7 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import sqlalchemy.exc
+import openai
 
 app = Flask(__name__)
 
@@ -20,6 +21,14 @@ def get_database_uri():
 app.config['SQLALCHEMY_DATABASE_URI'] = get_database_uri()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
+
+# OpenAI configuration
+openai_api_key = os.getenv('OPENAI_API_KEY')
+if openai_api_key:
+    openai.api_key = openai_api_key
+    print("OpenAI API key configured")
+else:
+    print("WARNING: OPENAI_API_KEY not found. AI suggestions will not work.")
 
 db = SQLAlchemy(app)
 
@@ -135,6 +144,67 @@ def delete_task(id):
     db.session.delete(task)
     db.session.commit()
     return redirect(url_for('home', group=group_name))
+
+@app.route('/api/tasks/suggest', methods=['POST'])
+def suggest_task():
+    try:
+        data = request.get_json()
+        title = data.get('title', '')
+        description = data.get('description', '')
+        
+        if not openai_api_key:
+            return jsonify({"error": "OpenAI API key not configured"}), 500
+        
+        # Create OpenAI client
+        client = openai.OpenAI(api_key=openai_api_key)
+        
+        # Prepare prompt
+        prompt = f"""Based on this task:
+Title: {title}
+Description: {description}
+
+Suggest:
+1. A better description (if the current one is empty or could be improved)
+2. Priority level (high, medium, or low) based on urgency and importance
+
+Respond in this exact format:
+Description: [your suggestion]
+Priority: [high/medium/low]"""
+        
+        # Call OpenAI
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful task management assistant."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=150,
+            temperature=0.7
+        )
+        
+        # Parse response
+        ai_response = response.choices[0].message.content
+        lines = ai_response.strip().split('\n')
+        
+        suggested_description = ""
+        suggested_priority = "medium"
+        
+        for line in lines:
+            if line.startswith("Description:"):
+                suggested_description = line.replace("Description:", "").strip()
+            elif line.startswith("Priority:"):
+                priority = line.replace("Priority:", "").strip().lower()
+                if priority in ['high', 'medium', 'low']:
+                    suggested_priority = priority
+        
+        return jsonify({
+            "suggested_description": suggested_description,
+            "suggested_priority": suggested_priority
+        })
+        
+    except Exception as e:
+        print(f"OpenAI API error: {e}")
+        return jsonify({"error": "Failed to get AI suggestions"}), 500
 
 @app.route('/health')
 def health():

@@ -122,8 +122,75 @@
                 <label for="due_date" class="form-label">Due Date</label>
                 <input type="date" class="form-control" id="due_date" name="due_date">
             </div>
+            <div class="mb-3">
+                <button type="button" class="btn btn-outline-info" id="aiSuggestBtn" onclick="getAISuggestions()">
+                    🤖 AI Suggestions
+                </button>
+                <small class="text-muted d-block mt-1">Get AI-powered description and priority suggestions</small>
+            </div>
             <button type="submit" class="btn btn-primary">Add Task</button>
         </form>
     </div>
 </div>
+
+<script>
+async function getAISuggestions() {
+    const titleInput = document.getElementById('title');
+    const descriptionInput = document.getElementById('description');
+    const prioritySelect = document.getElementById('priority');
+    const aiBtn = document.getElementById('aiSuggestBtn');
+    
+    const title = titleInput.value.trim();
+    const description = descriptionInput.value.trim();
+    
+    if (!title) {
+        alert('Please enter a task title first');
+        return;
+    }
+    
+    // Show loading state
+    aiBtn.innerHTML = '🔄 Getting suggestions...';
+    aiBtn.disabled = true;
+    
+    try {
+        const response = await fetch('/api/tasks/suggest', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                title: title,
+                description: description
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Apply suggestions
+            if (data.suggested_description && !description) {
+                descriptionInput.value = data.suggested_description;
+            }
+            
+            if (data.suggested_priority) {
+                prioritySelect.value = data.suggested_priority;
+            }
+            
+            // Show success message
+            aiBtn.innerHTML = '✓ Suggestions applied!';
+            setTimeout(() => {
+                aiBtn.innerHTML = '🤖 AI Suggestions';
+                aiBtn.disabled = false;
+            }, 2000);
+        } else {
+            throw new Error(data.error || 'Failed to get suggestions');
+        }
+    } catch (error) {
+        console.error('AI suggestion error:', error);
+        alert('Failed to get AI suggestions: ' + error.message);
+        aiBtn.innerHTML = '🤖 AI Suggestions';
+        aiBtn.disabled = false;
+    }
+}
+</script>
 {% endblock %}
