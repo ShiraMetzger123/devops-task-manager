@@ -146,91 +146,103 @@ def delete_task(id):
 
 @app.route('/api/tasks/suggest', methods=['POST'])
 def suggest_task():
-    print("AI suggestion request received")
+    print("=== AI suggestion request received ===")
     
     try:
+        print("Step 1: Checking request format")
         # Check if request has JSON data
         if not request.is_json:
             print("Error: Request is not JSON")
             return jsonify({"error": "Request must be JSON"}), 400
         
+        print("Step 2: Getting JSON data")
         data = request.get_json()
         if not data:
             print("Error: No JSON data received")
             return jsonify({"error": "No data received"}), 400
         
+        print(f"Step 3: Received data: {data}")
         title = data.get('title', '').strip()
         description = data.get('description', '').strip()
         
-        print(f"Processing task: title='{title}', description='{description}'")
+        print(f"Step 4: Processing task: title='{title}', description='{description}'")
         
         if not title:
             print("Error: No title provided")
             return jsonify({"error": "Task title is required"}), 400
         
+        print(f"Step 5: Checking OpenAI key (present: {bool(openai_api_key)})")
         if not openai_api_key:
             print("Error: OpenAI API key not configured")
             return jsonify({"error": "OpenAI API key not configured"}), 500
         
-        # Create OpenAI client
-        print("Creating OpenAI client")
-        client = openai.OpenAI(api_key=openai_api_key)
+        print("Step 6: Creating OpenAI client")
+        try:
+            client = openai.OpenAI(api_key=openai_api_key)
+            print("OpenAI client created successfully")
+        except Exception as e:
+            print(f"Error creating OpenAI client: {e}")
+            return jsonify({"error": f"Failed to create OpenAI client: {str(e)}"}), 500
         
-        # Prepare simplified prompt
-        prompt = f"Task: {title}\nCurrent description: {description or 'None'}\n\nProvide:\n1. A helpful description (2-3 sentences)\n2. Priority: high, medium, or low\n\nFormat:\nDescription: [description]\nPriority: [priority]"
+        print("Step 7: Preparing prompt")
+        prompt = f"Task: {title}\nDescription: {description or 'None'}\n\nSuggest a brief description and priority (high/medium/low).\n\nFormat:\nDescription: [your suggestion]\nPriority: [priority]"
+        print(f"Prompt: {prompt}")
         
-        print("Calling OpenAI API")
+        print("Step 8: Calling OpenAI API")
+        try:
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=150,
+                temperature=0.5
+            )
+            print("OpenAI API call successful")
+        except Exception as e:
+            print(f"OpenAI API call failed: {e}")
+            return jsonify({"error": f"OpenAI API error: {str(e)}"}), 500
         
-        # Call OpenAI with error handling
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a task management assistant. Be concise and helpful."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=200,
-            temperature=0.3
-        )
+        print("Step 9: Processing response")
+        try:
+            ai_response = response.choices[0].message.content.strip()
+            print(f"AI response: {ai_response}")
+        except Exception as e:
+            print(f"Error processing AI response: {e}")
+            return jsonify({"error": f"Failed to process AI response: {str(e)}"}), 500
         
-        print("OpenAI API call successful")
-        
-        # Parse response
-        ai_response = response.choices[0].message.content.strip()
-        print(f"AI response: {ai_response}")
-        
-        # Simple parsing
-        suggested_description = ""
+        print("Step 10: Parsing response")
+        suggested_description = f"Complete the task: {title}"
         suggested_priority = "medium"
         
-        lines = ai_response.split('\n')
-        for line in lines:
-            line = line.strip()
-            if line.lower().startswith('description:'):
-                suggested_description = line.split(':', 1)[1].strip()
-            elif line.lower().startswith('priority:'):
-                priority = line.split(':', 1)[1].strip().lower()
-                if priority in ['high', 'medium', 'low']:
-                    suggested_priority = priority
-        
-        # Fallback if parsing fails
-        if not suggested_description:
-            suggested_description = f"Complete the task: {title}"
+        try:
+            lines = ai_response.split('\n')
+            for line in lines:
+                line = line.strip()
+                if line.lower().startswith('description:'):
+                    suggested_description = line.split(':', 1)[1].strip()
+                elif line.lower().startswith('priority:'):
+                    priority = line.split(':', 1)[1].strip().lower()
+                    if priority in ['high', 'medium', 'low']:
+                        suggested_priority = priority
+        except Exception as e:
+            print(f"Error parsing response: {e}")
+            # Continue with fallback values
         
         result = {
             "suggested_description": suggested_description,
             "suggested_priority": suggested_priority
         }
         
-        print(f"Returning result: {result}")
+        print(f"Step 11: Returning result: {result}")
         return jsonify(result), 200
         
-    except openai.OpenAIError as e:
-        error_msg = f"OpenAI API error: {str(e)}"
-        print(error_msg)
-        return jsonify({"error": error_msg}), 500
     except Exception as e:
+        import traceback
         error_msg = f"Unexpected error: {str(e)}"
-        print(error_msg)
+        print(f"FULL ERROR: {error_msg}")
+        print(f"TRACEBACK: {traceback.format_exc()}")
         return jsonify({"error": error_msg}), 500
 
 @app.route('/health')
