@@ -164,9 +164,16 @@ async function getAISuggestions() {
             })
         });
         
-        const data = await response.json();
+        let data;
+        try {
+            data = await response.json();
+        } catch (e) {
+            throw new Error(`Server returned invalid JSON (status ${response.status})`);
+        }
         
         if (response.ok) {
+            console.log('AI suggestions received:', data);
+            
             // Apply suggestions
             if (data.suggested_description && !description) {
                 descriptionInput.value = data.suggested_description;
@@ -183,7 +190,8 @@ async function getAISuggestions() {
                 aiBtn.disabled = false;
             }, 2000);
         } else {
-            throw new Error(data.error || 'Failed to get suggestions');
+            const errorMsg = data.error || `Server error (status ${response.status})`;
+            throw new Error(errorMsg);
         }
     } catch (error) {
         console.error('AI suggestion error:', error);

@@ -25,7 +25,6 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
 # OpenAI configuration
 openai_api_key = os.getenv('OPENAI_API_KEY')
 if openai_api_key:
-    openai.api_key = openai_api_key
     print("OpenAI API key configured")
 else:
     print("WARNING: OPENAI_API_KEY not found. AI suggestions will not work.")
@@ -147,64 +146,92 @@ def delete_task(id):
 
 @app.route('/api/tasks/suggest', methods=['POST'])
 def suggest_task():
+    print("AI suggestion request received")
+    
     try:
+        # Check if request has JSON data
+        if not request.is_json:
+            print("Error: Request is not JSON")
+            return jsonify({"error": "Request must be JSON"}), 400
+        
         data = request.get_json()
-        title = data.get('title', '')
-        description = data.get('description', '')
+        if not data:
+            print("Error: No JSON data received")
+            return jsonify({"error": "No data received"}), 400
+        
+        title = data.get('title', '').strip()
+        description = data.get('description', '').strip()
+        
+        print(f"Processing task: title='{title}', description='{description}'")
+        
+        if not title:
+            print("Error: No title provided")
+            return jsonify({"error": "Task title is required"}), 400
         
         if not openai_api_key:
+            print("Error: OpenAI API key not configured")
             return jsonify({"error": "OpenAI API key not configured"}), 500
         
         # Create OpenAI client
+        print("Creating OpenAI client")
         client = openai.OpenAI(api_key=openai_api_key)
         
-        # Prepare prompt
-        prompt = f"""Based on this task:
-Title: {title}
-Description: {description}
-
-Suggest:
-1. A better description (if the current one is empty or could be improved)
-2. Priority level (high, medium, or low) based on urgency and importance
-
-Respond in this exact format:
-Description: [your suggestion]
-Priority: [high/medium/low]"""
+        # Prepare simplified prompt
+        prompt = f"Task: {title}\nCurrent description: {description or 'None'}\n\nProvide:\n1. A helpful description (2-3 sentences)\n2. Priority: high, medium, or low\n\nFormat:\nDescription: [description]\nPriority: [priority]"
         
-        # Call OpenAI
+        print("Calling OpenAI API")
+        
+        # Call OpenAI with error handling
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are a helpful task management assistant."},
+                {"role": "system", "content": "You are a task management assistant. Be concise and helpful."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=150,
-            temperature=0.7
+            max_tokens=200,
+            temperature=0.3
         )
         
-        # Parse response
-        ai_response = response.choices[0].message.content
-        lines = ai_response.strip().split('\n')
+        print("OpenAI API call successful")
         
+        # Parse response
+        ai_response = response.choices[0].message.content.strip()
+        print(f"AI response: {ai_response}")
+        
+        # Simple parsing
         suggested_description = ""
         suggested_priority = "medium"
         
+        lines = ai_response.split('\n')
         for line in lines:
-            if line.startswith("Description:"):
-                suggested_description = line.replace("Description:", "").strip()
-            elif line.startswith("Priority:"):
-                priority = line.replace("Priority:", "").strip().lower()
+            line = line.strip()
+            if line.lower().startswith('description:'):
+                suggested_description = line.split(':', 1)[1].strip()
+            elif line.lower().startswith('priority:'):
+                priority = line.split(':', 1)[1].strip().lower()
                 if priority in ['high', 'medium', 'low']:
                     suggested_priority = priority
         
-        return jsonify({
+        # Fallback if parsing fails
+        if not suggested_description:
+            suggested_description = f"Complete the task: {title}"
+        
+        result = {
             "suggested_description": suggested_description,
             "suggested_priority": suggested_priority
-        })
+        }
         
+        print(f"Returning result: {result}")
+        return jsonify(result), 200
+        
+    except openai.OpenAIError as e:
+        error_msg = f"OpenAI API error: {str(e)}"
+        print(error_msg)
+        return jsonify({"error": error_msg}), 500
     except Exception as e:
-        print(f"OpenAI API error: {e}")
-        return jsonify({"error": "Failed to get AI suggestions"}), 500
+        error_msg = f"Unexpected error: {str(e)}"
+        print(error_msg)
+        return jsonify({"error": error_msg}), 500
 
 @app.route('/health')
 def health():
