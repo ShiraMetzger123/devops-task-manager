@@ -178,7 +178,7 @@ def suggest_task():
         
         print("Step 6: Creating Gemini model")
         try:
-            model = genai.GenerativeModel('gemini-1.5-flash-latest')
+            model = genai.GenerativeModel('gemini-2.0-flash-001')
             print("Gemini model created successfully")
         except Exception as e:
             print(f"Error creating Gemini model: {e}")
