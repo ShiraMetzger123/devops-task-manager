@@ -4,7 +4,7 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import sqlalchemy.exc
-import openai
+import google.generativeai as genai
 
 app = Flask(__name__)
 
@@ -22,12 +22,13 @@ app.config['SQLALCHEMY_DATABASE_URI'] = get_database_uri()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
 
-# OpenAI configuration
-openai_api_key = os.getenv('OPENAI_API_KEY')
-if openai_api_key:
-    print("OpenAI API key configured")
+# Gemini configuration
+gemini_api_key = os.getenv('GEMINI_API_KEY')
+if gemini_api_key:
+    genai.configure(api_key=gemini_api_key)
+    print("Gemini API key configured")
 else:
-    print("WARNING: OPENAI_API_KEY not found. AI suggestions will not work.")
+    print("WARNING: GEMINI_API_KEY not found. AI suggestions will not work.")
 
 db = SQLAlchemy(app)
 
@@ -150,7 +151,6 @@ def suggest_task():
     
     try:
         print("Step 1: Checking request format")
-        # Check if request has JSON data
         if not request.is_json:
             print("Error: Request is not JSON")
             return jsonify({"error": "Request must be JSON"}), 400
@@ -171,42 +171,34 @@ def suggest_task():
             print("Error: No title provided")
             return jsonify({"error": "Task title is required"}), 400
         
-        print(f"Step 5: Checking OpenAI key (present: {bool(openai_api_key)})")
-        if not openai_api_key:
-            print("Error: OpenAI API key not configured")
-            return jsonify({"error": "OpenAI API key not configured"}), 500
+        print(f"Step 5: Checking Gemini key (present: {bool(gemini_api_key)})")
+        if not gemini_api_key:
+            print("Error: Gemini API key not configured")
+            return jsonify({"error": "Gemini API key not configured"}), 500
         
-        print("Step 6: Creating OpenAI client")
+        print("Step 6: Creating Gemini model")
         try:
-            client = openai.OpenAI(api_key=openai_api_key)
-            print("OpenAI client created successfully")
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            print("Gemini model created successfully")
         except Exception as e:
-            print(f"Error creating OpenAI client: {e}")
-            return jsonify({"error": f"Failed to create OpenAI client: {str(e)}"}), 500
+            print(f"Error creating Gemini model: {e}")
+            return jsonify({"error": f"Failed to create Gemini model: {str(e)}"}), 500
         
         print("Step 7: Preparing prompt")
         prompt = f"Task: {title}\nDescription: {description or 'None'}\n\nSuggest a brief description and priority (high/medium/low).\n\nFormat:\nDescription: [your suggestion]\nPriority: [priority]"
         print(f"Prompt: {prompt}")
         
-        print("Step 8: Calling OpenAI API")
+        print("Step 8: Calling Gemini API")
         try:
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=150,
-                temperature=0.5
-            )
-            print("OpenAI API call successful")
+            response = model.generate_content(prompt)
+            print("Gemini API call successful")
         except Exception as e:
-            print(f"OpenAI API call failed: {e}")
-            return jsonify({"error": f"OpenAI API error: {str(e)}"}), 500
+            print(f"Gemini API call failed: {e}")
+            return jsonify({"error": f"Gemini API error: {str(e)}"}), 500
         
         print("Step 9: Processing response")
         try:
-            ai_response = response.choices[0].message.content.strip()
+            ai_response = response.text.strip()
             print(f"AI response: {ai_response}")
         except Exception as e:
             print(f"Error processing AI response: {e}")

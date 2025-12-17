@@ -11,7 +11,7 @@ services:
       DB_USER: task_user
       DB_PASSWORD: task_password
       DB_NAME: task_db
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
     ports:
       - "5000:5000"
 
