@@ -1,0 +1,40 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Deploy to server
+      uses: appleboy/ssh-action@v1.0.3
+      env:
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        SECRET_KEY: flask-secret-key-production
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        envs: DB_PASSWORD,GEMINI_API_KEY,SECRET_KEY
+        script: |
+          cd ~/devops-task-manager
+          git pull
+          
+          # Deploy with environment variables
+          DB_PASSWORD="${DB_PASSWORD}" \
+          GEMINI_API_KEY="${GEMINI_API_KEY}" \
+          SECRET_KEY="${SECRET_KEY}" \
+          docker compose down
+          
+          DB_PASSWORD="${DB_PASSWORD}" \
+          GEMINI_API_KEY="${GEMINI_API_KEY}" \
+          SECRET_KEY="${SECRET_KEY}" \
+          docker compose up --build -d
