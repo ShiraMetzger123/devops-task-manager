@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    env:
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Start application
+      run: docker compose up --build -d
+    
+    - name: Wait for application
+      run: sleep 30
+    
+    - name: Smoke test
+      run: curl -f http://localhost/health || exit 1
+    
+    - name: Cleanup
+      run: docker compose down -v
+      if: always()
