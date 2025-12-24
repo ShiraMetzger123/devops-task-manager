@@ -24,8 +24,50 @@ jobs:
     - name: Wait for application
       run: sleep 30
     
-    - name: Smoke test
-      run: curl -f http://localhost/health || exit 1
+    - name: Health check
+      run: |
+        echo "Testing health endpoint..."
+        curl -f http://localhost/health || exit 1
+        echo "Health check passed"
+    
+    - name: Functional smoke test
+      run: |
+        echo "Starting functional test..."
+        
+        # Create a test task and capture HTTP status code
+        echo "Creating test task..."
+        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost/api/tasks \
+          -H "Content-Type: application/json" \
+          -d '{"title":"CI Test Task","description":"Automated test task","priority":"high"}')
+        
+        echo "Received HTTP status: $HTTP_STATUS"
+        
+        # Check if status is 200 or 201
+        if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "201" ]; then
+          echo "Functional test passed successfully!"
+        else
+          echo "FAILED: Expected status 200 or 201, got $HTTP_STATUS"
+          exit 1
+        fi
+    
+    - name: Send failure notification
+      if: failure()
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: smtp.gmail.com
+        server_port: 587
+        username: ${{ secrets.SMTP_USERNAME }}
+        password: ${{ secrets.SMTP_PASSWORD }}
+        subject: "CI Failure: ${{ github.repository }} - ${{ github.ref_name }}"
+        to: ${{ secrets.ALERT_EMAIL_TO }}
+        from: ${{ secrets.ALERT_EMAIL_FROM }}
+        body: |
+          CI workflow failed for repository: ${{ github.repository }}
+          Branch: ${{ github.ref_name }}
+          Actor: ${{ github.actor }}
+          Run URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          
+          Please check the logs for more details.
     
     - name: Cleanup
       run: docker compose down -v
