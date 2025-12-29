@@ -56,25 +56,6 @@ jobs:
           exit 1
         fi
     
-    - name: Send failure notification
-      if: failure()
-      uses: dawidd6/action-send-mail@v3
-      with:
-        server_address: smtp.gmail.com
-        server_port: 587
-        username: ${{ secrets.SMTP_USERNAME }}
-        password: ${{ secrets.SMTP_PASSWORD }}
-        subject: "CI Failure: ${{ github.repository }} - ${{ github.ref_name }}"
-        to: ${{ secrets.ALERT_EMAIL_TO }}
-        from: ${{ secrets.ALERT_EMAIL_FROM }}
-        body: |
-          CI workflow failed for repository: ${{ github.repository }}
-          Branch: ${{ github.ref_name }}
-          Actor: ${{ github.actor }}
-          Run URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          
-          Please check the logs for more details.
-    
     - name: Cleanup
       run: docker compose down -v
       if: always()
