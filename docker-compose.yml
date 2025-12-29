@@ -10,9 +10,9 @@ services:
       DB_PORT: 3306
       DB_USER: task_user
       DB_NAME: task_db
-      DB_PASSWORD: ${DB_PASSWORD}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      SECRET_KEY: flask_secret_key_change_this_32_chars_min
+      DB_PASSWORD: "123"
+      GEMINI_API_KEY: "AIzaSyBJnFPDXiHlMelJvfb9gdOJkET9fDxz_TE"
+      SECRET_KEY: "dev-secret-key"
     ports:
       - "5000:5000"
 
@@ -23,8 +23,8 @@ services:
     environment:
       MYSQL_DATABASE: task_db
       MYSQL_USER: task_user
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: "123"
+      MYSQL_PASSWORD: "123"
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
