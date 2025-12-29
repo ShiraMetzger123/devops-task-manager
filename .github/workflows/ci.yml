@@ -2,60 +2,60 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     env:
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Login to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-    
-    - name: Start application
-      run: docker compose up --build -d
-    
-    - name: Wait for application
-      run: sleep 30
-    
-    - name: Health check
-      run: |
-        echo "Testing health endpoint..."
-        curl -f http://localhost/health || exit 1
-        echo "Health check passed"
-    
-    - name: Functional smoke test
-      run: |
-        echo "Starting functional test..."
-        
-        # Create a test task and capture HTTP status code
-        echo "Creating test task..."
-        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost/api/tasks \
-          -H "Content-Type: application/json" \
-          -d '{"title":"CI Test Task","description":"Automated test task","priority":"high"}')
-        
-        echo "Received HTTP status: $HTTP_STATUS"
-        
-        # Check if status is 200 or 201
-        if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "201" ]; then
-          echo "Functional test passed successfully!"
-        else
-          echo "FAILED: Expected status 200 or 201, got $HTTP_STATUS"
-          exit 1
-        fi
-    
-    - name: Cleanup
-      run: docker compose down -v
-      if: always()
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Start application
+        run: docker compose up --build -d
+
+      - name: Wait for application
+        run: sleep 30
+
+      - name: Health check
+        run: |
+          echo "Testing health endpoint..."
+          curl -f http://localhost/health || exit 1
+          echo "Health check passed"
+
+      - name: Functional smoke test
+        run: |
+          echo "Starting functional test..."
+
+          # Create a test task and capture HTTP status code
+          echo "Creating test task..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost/api/tasks \
+            -H "Content-Type: application/json" \
+            -d '{"title":"CI Test Task","description":"Automated test task","priority":"high"}')
+
+          echo "Received HTTP status: $HTTP_STATUS"
+
+          # Check if status is 200 or 201
+          if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "201" ]; then
+            echo "Functional test passed successfully!"
+          else
+            echo "FAILED: Expected status 200 or 201, got $HTTP_STATUS"
+            exit 1
+          fi
+
+      - name: Cleanu
+        run: docker compose down -v
+        if: always()
