@@ -10,6 +10,10 @@ app = Flask(__name__)
 
 # Database configuration
 def get_database_uri():
+    # Use SQLite for testing
+    if os.getenv('TESTING') == 'True':
+        return 'sqlite:///:memory:'
+    
     db_host = os.getenv('DB_HOST', 'localhost')
     db_port = os.getenv('DB_PORT', '3306')
     db_user = os.getenv('DB_USER', 'task_user')
