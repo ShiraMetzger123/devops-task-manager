@@ -241,6 +241,59 @@ def suggest_task():
 def health():
     return jsonify({"status": "ok"})
 
+@app.route('/api/tasks', methods=['POST'])
+def create_task_api():
+    try:
+        if not request.is_json:
+            return jsonify({"error": "Request must be JSON"}), 400
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data received"}), 400
+        
+        title = data.get('title', '').strip()
+        if not title:
+            return jsonify({"error": "Title is required"}), 400
+        
+        description = data.get('description', '')
+        priority = data.get('priority', 'medium')
+        category = data.get('category', 'general')
+        group_name = data.get('group', 'default')
+        
+        due_date = None
+        if data.get('due_date'):
+            try:
+                due_date = datetime.strptime(data['due_date'], '%Y-%m-%d').date()
+            except ValueError:
+                return jsonify({"error": "Invalid due_date format. Use YYYY-MM-DD"}), 400
+        
+        task = Task(
+            title=title,
+            description=description,
+            due_date=due_date,
+            priority=priority,
+            category=category,
+            group_name=group_name
+        )
+        
+        db.session.add(task)
+        db.session.commit()
+        
+        return jsonify({
+            'id': task.id,
+            'title': task.title,
+            'description': task.description,
+            'due_date': task.due_date.isoformat() if task.due_date else None,
+            'priority': task.priority,
+            'category': task.category,
+            'status': task.status,
+            'group_name': task.group_name,
+            'created_at': task.created_at.isoformat()
+        }), 201
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/tasks')
 def api_tasks():
     query = Task.query
