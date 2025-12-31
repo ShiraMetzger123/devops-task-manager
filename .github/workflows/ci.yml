@@ -36,6 +36,13 @@ jobs:
           curl -f http://localhost/health || exit 1
           echo "Health check passed"
 
+      - name: Run unit tests
+        run: |
+          echo "Installing test dependencies..."
+          pip install -r requirements.txt
+          echo "Running pytest..."
+          python -m pytest -v
+
       - name: Functional smoke test
         run: |
           echo "Starting functional test..."
@@ -48,11 +55,11 @@ jobs:
 
           echo "Received HTTP status: $HTTP_STATUS"
 
-          # Check if status is 200 or 201
-          if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "201" ]; then
+          # Check if status is 201 (created)
+          if [ "$HTTP_STATUS" = "201" ]; then
             echo "Functional test passed successfully!"
           else
-            echo "FAILED: Expected status 200 or 201, got $HTTP_STATUS"
+            echo "FAILED: Expected status 201, got $HTTP_STATUS"
             exit 1
           fi
 
