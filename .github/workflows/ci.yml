@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
 
     env:
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
@@ -68,7 +68,7 @@ jobs:
         if: always()
 
   security:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
     needs: test
 
     steps:
@@ -103,7 +103,7 @@ jobs:
         run: pip-audit --requirement requirements.txt --vulnerability-service osv --format json --output audit-results.json || pip-audit --requirement requirements.txt --vulnerability-service osv
 
   build-and-push:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64]
     needs: [test, security]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
@@ -125,3 +125,20 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/task-manager:${{ github.sha }}
             ${{ secrets.DOCKERHUB_USERNAME }}/task-manager:latest
+
+  deploy:
+    runs-on: [self-hosted, linux, x64]
+    needs: [test, security, build-and-push]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    env:
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+    steps:
+      - name: Deploy to production
+        run: |
+          cd ~/devops-task-manager
+          git pull
+          docker compose up --build -d
+          docker compose ps
