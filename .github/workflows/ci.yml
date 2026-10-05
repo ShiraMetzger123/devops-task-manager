@@ -131,14 +131,44 @@ jobs:
     needs: [test, security, build-and-push]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
-    env:
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-
     steps:
+      - name: Write .env file
+        run: |
+          cat > ~/devops-task-manager/.env << 'EOF'
+          DB_USER=task_user
+          DB_NAME=task_db
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_ROOT_PASSWORD=${{ secrets.DB_ROOT_PASSWORD }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+          EOF
+
       - name: Deploy to production
         run: |
           cd ~/devops-task-manager
           git pull
           docker compose up --build -d
           docker compose ps
+
+  notify-failure:
+    runs-on: [self-hosted, linux, x64]
+    needs: [test, security, build-and-push, deploy]
+    if: always() && (needs.test.result == 'failure' || needs.security.result == 'failure' || needs.build-and-push.result == 'failure' || needs.deploy.result == 'failure')
+
+    steps:
+      - name: Send failure email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          to: ${{ secrets.MAIL_TO }}
+          from: GitHub Actions <${{ secrets.MAIL_USERNAME }}>
+          subject: "CI/CD Pipeline FAILED - ${{ github.repository }} (${{ github.ref_name }})"
+          body: |
+            Pipeline failed on repository: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Triggered by: ${{ github.actor }}
+            View run: ${{ github.server_url }}/${{ github.repository }}/actions/run/${{ github.run_id }}

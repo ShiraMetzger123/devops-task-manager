@@ -5,14 +5,16 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    env_file:
+      - .env
     environment:
       DB_HOST: db
       DB_PORT: 3306
-      DB_USER: task_user
-      DB_NAME: task_db
-      DB_PASSWORD: "123"
-      GEMINI_API_KEY: "AIzaSyBJnFPDXiHlMelJvfb9gdOJkET9fDxz_TE"
-      SECRET_KEY: "dev-secret-key"
+      DB_USER: ${DB_USER}
+      DB_NAME: ${DB_NAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      SECRET_KEY: ${SECRET_KEY}
     ports:
       - "5000:5000"
 
@@ -21,10 +23,10 @@ services:
     container_name: task-manager-db
     restart: always
     environment:
-      MYSQL_DATABASE: task_db
-      MYSQL_USER: task_user
-      MYSQL_ROOT_PASSWORD: "123"
-      MYSQL_PASSWORD: "123"
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:

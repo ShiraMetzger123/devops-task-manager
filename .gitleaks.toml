@@ -1,0 +1,5 @@
+title = "Gitleaks configuration for devops-task-manager"
+
+[allowlist]
+  description = "Revoked credentials present in historical commits before secrets remediation"
+  commits = ["ff509d29dfaabac9690f1f693a6c6a6a39dbcafd"]
