@@ -50,10 +50,12 @@ jobs:
 
       - name: Run unit tests
         run: |
+          echo "Creating virtual environment..."
+          python3 -m venv .venv
           echo "Installing test dependencies..."
-          pip install -r requirements.txt
+          .venv/bin/pip install -r requirements.txt
           echo "Running pytest..."
-          python -m pytest -v
+          .venv/bin/python -m pytest -v
 
       - name: Functional smoke test
         run: |
@@ -79,6 +81,7 @@ jobs:
         run: |
           docker compose down -v
           rm -f .env
+          rm -rf .venv
         if: always()
 
   security:
