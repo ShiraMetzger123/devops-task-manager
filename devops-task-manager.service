@@ -1,0 +1,15 @@
+[Unit]
+Description=DevOps Task Manager startup (pull + docker compose up)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=ubuntu
+WorkingDirectory=/home/ubuntu/devops-task-manager
+ExecStart=/home/ubuntu/devops-task-manager/startup.sh
+
+[Install]
+WantedBy=multi-user.target
