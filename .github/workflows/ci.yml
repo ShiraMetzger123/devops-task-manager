@@ -10,6 +10,11 @@ jobs:
   test:
     runs-on: [self-hosted, linux, x64]
 
+    env:
+      COMPOSE_PROJECT_NAME: ci-test
+      WEB_PORT: 5001
+      NGINX_PORT: 8080
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -40,7 +45,7 @@ jobs:
       - name: Health check
         run: |
           echo "Testing health endpoint..."
-          curl -f http://localhost/health || exit 1
+          curl -f http://localhost:8080/health || exit 1
           echo "Health check passed"
 
       - name: Run unit tests
@@ -56,7 +61,7 @@ jobs:
 
           # Create a test task and capture HTTP status code
           echo "Creating test task..."
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost/api/tasks \
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:8080/api/tasks \
             -H "Content-Type: application/json" \
             -d '{"title":"CI Test Task","description":"Automated test task","priority":"high"}')
 
