@@ -28,12 +28,5 @@ USER app
 # Expose port 5000
 EXPOSE 5000
 
-# Environment variables (can be overridden at runtime)
-ENV DB_HOST=localhost
-ENV DB_PORT=3306
-ENV DB_USER=root
-ENV DB_PASSWORD=password
-ENV DB_NAME=taskmanager
-
 # Run the application
 CMD ["python", "app/app.py"]
